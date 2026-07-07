@@ -2,10 +2,10 @@
 
 A fast, fully-typed **async** Python wrapper for the [klappstuhl.me](https://klappstuhl.me) API — image hosting, media manipulation, format conversion, rendering (code screenshots, web-page screenshots, Markdown→PDF), malware scanning, and Discord-guild galleries.
 
-- ⚡ **Async-first**, built on `aiohttp` with connection reuse.
-- 🧯 **Reliable** — automatic retries with exponential backoff for network blips and `5xx`, and transparent `429` rate-limit handling using the server's reset headers.
-- 🧩 **Typed** — every response is a dataclass, every error a specific exception, ships with `py.typed`.
-- 📦 **Complete** — covers every endpoint of the public API (`/api/v1`).
+- **Async**, built on `aiohttp` with connection reuse.
+- **Reliable** — automatic retries with exponential backoff for network blips and `5xx`, and transparent `429` rate-limit handling using the server's reset headers.
+- **Typed** — every response is a dataclass, every error a specific exception, ships with `py.typed`.
+- **Complete** — covers every endpoint of the public API (`/api/v1`).
 
 ```python
 import asyncio
@@ -23,24 +23,29 @@ asyncio.run(main())
 
 ## Installation
 
-With **pip**:
+The package is distributed via **GitHub releases** (it is not on PyPI yet), so
+install it from the repository and pin to a released tag:
 
 ```bash
-pip install klappstuhl
-```
-
-Or with **Poetry**:
-
-```bash
-poetry add klappstuhl
+pip install "klappstuhl @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.2.0"
+# or
+poetry add "git+https://github.com/klappstuhlpy/klappstuhl.py#v0.2.0"
 ```
 
 Optional C-accelerated `aiohttp` extras (the `speed` extra):
 
 ```bash
-pip install "klappstuhl[speed]"
-# or
-poetry add "klappstuhl[speed]"
+pip install "klappstuhl[speed] @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.2.0"
+```
+
+Or, declaring it as a project dependency:
+
+```toml
+# PEP 621 — pyproject.toml [project.dependencies]
+dependencies = ["klappstuhl @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.2.0"]
+
+# Poetry — [tool.poetry.dependencies]
+klappstuhl = { git = "https://github.com/klappstuhlpy/klappstuhl.py", tag = "v0.2.0" }
 ```
 
 Requires Python 3.9+.
@@ -55,15 +60,23 @@ client = klappstuhl.Client("my-api-key")
 
 ### Scopes
 
-API keys are scoped. A key with **no** scopes is treated as unrestricted (legacy). Otherwise the following are enforced (calling without the scope raises `Forbidden`):
+API keys are scoped. A key with **no** scopes is treated as unrestricted (legacy). Otherwise each endpoint requires a specific scope — calling without it raises `Forbidden`.
+
+**User-grantable** — generate a key with these on your [account page](https://klappstuhl.me/account):
 
 | Scope          | Grants                                                                            |
 |----------------|-----------------------------------------------------------------------------------|
 | `images:read`  | download, scan, metadata, manipulate, convert, and all render/transcode endpoints |
 | `images:write` | upload, delete                                                                    |
-| `images:guild` | guild-gallery upload / list / delete                                              |
 
-The `klappstuhl.Scope` enum lists them. The `admin:*` scopes exist server-side but are reserved for privileged operators — they have **no typed methods** on this client. If you hold such a key, reach those routes with the [raw `request` escape hatch](#raw-requests).
+**Privileged** — reserved for the operator's own services and **not grantable to a personal key** (the account page hides them, and the server drops them from a normal key's generation request):
+
+| Scope                        | Grants                                                                                                                                     |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `images:guild`               | guild-gallery upload / list / delete — these keys are **minted per Discord guild by the service** (e.g. Percy's bot), not created by users |
+| `admin:read` / `admin:write` | operator / homelab admin routes — **no typed methods** on this client                                                                      |
+
+The `klappstuhl.Scope` enum lists all five. The guild-gallery methods below and the `admin:*` routes only work with a key that already holds the matching privileged scope — a key you generate yourself will not have them. For admin routes, use the [raw `request` escape hatch](#raw-requests).
 
 ## Client options
 
@@ -176,9 +189,12 @@ report.is_infected    # bool
 report.vt_positives   # engines that flagged it (or None)
 ```
 
-### Discord guild galleries · *`images:guild`*
+### Discord guild galleries · *`images:guild` (privileged)*
 
-Shared per-guild image galleries (used e.g. for Discord poll banners).
+Shared per-guild image galleries (used e.g. for Discord poll banners). These need
+the privileged `images:guild` scope, which is **not** available on a personal key —
+the service (e.g. Percy's bot) mints a narrow key per guild. With an ordinary key
+these calls raise `Forbidden`.
 
 ```python
 await client.upload_guild_images(guild_id, "banner.png", expires_in=3600)

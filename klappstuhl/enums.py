@@ -47,10 +47,18 @@ class Scope(str, Enum):
     A key with *no* scopes is treated by the server as legacy / unrestricted
     (full access). Otherwise every endpoint requires a specific scope; calling
     it without that scope raises :class:`~klappstuhl.errors.Forbidden`.
+
+    :attr:`IMAGES_READ` and :attr:`IMAGES_WRITE` are user-grantable on the account
+    page. :attr:`GUILD_IMAGES` and the two ``ADMIN_*`` scopes are **privileged**:
+    the server does not grant them to a personal key. ``images:guild`` keys are
+    minted per Discord guild by the operator's service (e.g. Percy's bot), and
+    ``admin:*`` is reserved for the operator — reach admin routes with
+    :meth:`Client.request`.
     """
 
     IMAGES_READ = "images:read"
     IMAGES_WRITE = "images:write"
+    # Privileged — not grantable to a personal key (see the class docstring).
     GUILD_IMAGES = "images:guild"
     ADMIN_READ = "admin:read"
     ADMIN_WRITE = "admin:write"
