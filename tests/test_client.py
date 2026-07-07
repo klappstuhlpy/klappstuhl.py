@@ -130,12 +130,26 @@ async def test_guild_gallery_roundtrip(client, server):
     assert deleted.file == "i"
 
 
-async def test_admin_updates(client, server):
+async def test_raw_request_escape_hatch(client, server):
+    # The raw ``request`` escape hatch reaches endpoints not on the typed
+    # surface (e.g. the admin-only routes) and returns the unwrapped body.
     server.add("GET", "/api/v1/admin/updates", json=[
         {"service": "web", "image": "nginx:latest", "state": "up_to_date", "checked_at": 100}])
-    updates = await client.admin_updates()
-    assert updates[0].service == "web"
+    data = await client.request("GET", "/admin/updates")
+    assert data[0]["service"] == "web"
+    # Callers parse it themselves with the public models if they wish.
+    updates = [klappstuhl.ImageUpdate.from_dict(item) for item in data]
     assert updates[0].state is klappstuhl.UpdateState.UP_TO_DATE
+
+
+async def test_raw_request_sends_auth_and_params(client, server):
+    server.add("GET", "/api/v1/anything", json={"ok": True})
+    await client.request("GET", "/anything", params={"a": 1, "b": None, "c": True})
+    req = server.requests[-1]
+    assert req["headers"]["Authorization"] == "test-token"
+    assert req["query"]["a"] == "1"
+    assert "b" not in req["query"]  # None dropped
+    assert req["query"]["c"] == "true"  # bool coerced
 
 
 async def test_forbidden_error(client, server):
@@ -177,11 +191,11 @@ async def test_rate_limit_exhausts_and_raises(server):
 
 
 async def test_rate_limit_headers_exposed(client, server):
-    server.add("GET", "/api/v1/admin/updates", json=[],
+    server.add("GET", "/api/v1/anything", json=[],
                headers={"x-ratelimit-limit": "25", "x-ratelimit-remaining": "24",
                         "x-ratelimit-reset-after": "0.5"},
                content_type="application/json")
-    await client.admin_updates()
+    await client.request("GET", "/anything")
     assert client.rate_limit is not None
     assert client.rate_limit.limit == 25
     assert client.rate_limit.remaining == 24

@@ -23,14 +23,24 @@ asyncio.run(main())
 
 ## Installation
 
+With **pip**:
+
 ```bash
 pip install klappstuhl
 ```
 
-Optional C-accelerated `aiohttp` extras:
+Or with **Poetry**:
+
+```bash
+poetry add klappstuhl
+```
+
+Optional C-accelerated `aiohttp` extras (the `speed` extra):
 
 ```bash
 pip install "klappstuhl[speed]"
+# or
+poetry add "klappstuhl[speed]"
 ```
 
 Requires Python 3.9+.
@@ -47,14 +57,13 @@ client = klappstuhl.Client("my-api-key")
 
 API keys are scoped. A key with **no** scopes is treated as unrestricted (legacy). Otherwise the following are enforced (calling without the scope raises `Forbidden`):
 
-| Scope | Grants |
-|-------|--------|
-| `images:read` | download, scan, metadata, manipulate, convert, and all render/transcode endpoints |
-| `images:write` | upload, delete |
-| `images:guild` | guild-gallery upload / list / delete |
-| `admin:read` | container image-update status |
+| Scope          | Grants                                                                            |
+|----------------|-----------------------------------------------------------------------------------|
+| `images:read`  | download, scan, metadata, manipulate, convert, and all render/transcode endpoints |
+| `images:write` | upload, delete                                                                    |
+| `images:guild` | guild-gallery upload / list / delete                                              |
 
-The `klappstuhl.Scope` enum lists them.
+The `klappstuhl.Scope` enum lists them. The `admin:*` scopes exist server-side but are reserved for privileged operators — they have **no typed methods** on this client. If you hold such a key, reach those routes with the [raw `request` escape hatch](#raw-requests).
 
 ## Client options
 
@@ -177,15 +186,28 @@ gallery = await client.list_guild_images(guild_id)   # GuildImagesResult
 await client.delete_guild_image(guild_id, "abc123")
 ```
 
-### Admin
-
-#### `admin_updates() -> list[ImageUpdate]` · *`admin:read`*
-Container image-update status for each configured service.
-
 ### Discovery
 
 #### `versions() -> ApiVersions`
 The unauthenticated `GET /api` version-discovery document.
+
+---
+
+### Raw requests
+
+<a name="raw-requests"></a>
+
+Every endpoint meant for general use has a typed method above. For anything else — the `admin:*` routes (which only privileged keys may call), or an endpoint added server-side after this release — use the low-level escape hatch:
+
+#### `request(method, path, *, params=None, json=None, files=None, fields=None, expect="json", versioned=True) -> Any`
+
+It runs through the same auth, retry, and rate-limit machinery as every typed call, but returns the **unwrapped** response for you to parse yourself. `path` is below the version prefix (`/api/v1` is added unless `versioned=False`).
+
+```python
+# An admin-only route, with a key that holds the admin scope:
+data = await client.request("GET", "/admin/updates")
+updates = [klappstuhl.ImageUpdate.from_dict(u) for u in data]
+```
 
 ---
 
@@ -223,15 +245,26 @@ The API allows **25 requests / 60 s** per IP. The client automatically waits out
 
 ## Development
 
+The project uses a PEP 621 `pyproject.toml`, so you can manage the dev environment with either tool.
+
+With **pip**:
+
 ```bash
 pip install -e ".[dev]"
-pytest            # run the test suite (mocked HTTP, no network)
-ruff check .      # lint
-mypy klappstuhl   # type-check
+pytest
+ruff check .
+mypy klappstuhl
+```
+
+With **Poetry** (2.0+, which reads the standard `[project]` table directly):
+
+```bash
+poetry install --extras dev
+poetry run pytest
+poetry run ruff check .
+poetry run mypy klappstuhl
 ```
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-> This is an unofficial client library. The interactive API reference lives at <https://klappstuhl.me/api/docs>.

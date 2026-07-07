@@ -98,7 +98,11 @@ class TranscodeFormat(str, Enum):
 
 
 class UpdateState(str, Enum):
-    """Container image-update state returned by :meth:`Client.admin_updates`."""
+    """Container image-update state, as returned by the admin ``/admin/updates`` route.
+
+    That route is admin-only and has no typed client method; reach it via
+    :meth:`Client.request` and parse the payload with :class:`ImageUpdate`.
+    """
 
     UP_TO_DATE = "up_to_date"
     UPDATE_AVAILABLE = "update_available"

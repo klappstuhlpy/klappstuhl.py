@@ -25,7 +25,6 @@ from .models import (
     DeleteResult,
     GuildImagesResult,
     ImageInfo,
-    ImageUpdate,
     RateLimit,
     ScanReport,
     ShareResult,
@@ -509,12 +508,75 @@ class Client:
             files=[("file", resolve_file(file))], share=share,
         )
 
-    # -- admin ---------------------------------------------------------------
+    # -- raw / escape hatch --------------------------------------------------
 
-    async def admin_updates(self) -> list[ImageUpdate]:
-        """List container image-update status. Requires the ``admin:read`` scope."""
-        data = await self._http.request("GET", "/admin/updates")
-        return [ImageUpdate.from_dict(item) for item in data or []]
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: Any | None = None,
+        files: list[tuple[str, FileInput]] | None = None,
+        fields: dict[str, str] | None = None,
+        expect: Literal["json", "bytes", "text", "none"] = "json",
+        versioned: bool = True,
+    ) -> Any:
+        """Send a raw, hand-crafted request to the API — an escape hatch.
+
+        The typed methods above cover every endpoint intended for general use.
+        This low-level method exists for endpoints deliberately left out of the
+        public surface (for example the ``admin:*`` routes, which only privileged
+        keys may call) or for anything added server-side after this release. It
+        goes through the same auth, retry, and rate-limit machinery as every
+        other call, but returns the *unwrapped* response — you parse it yourself.
+
+        Parameters
+        ----------
+        method:
+            HTTP verb (``"GET"``, ``"POST"``, ``"DELETE"`` …).
+        path:
+            Path **below** the version prefix, with a leading slash, e.g.
+            ``"/admin/updates"``. The ``/api/v1`` prefix is added for you (pass
+            ``versioned=False`` to hit the un-versioned ``/api`` root instead).
+        params:
+            Query-string parameters. ``None`` values are dropped; ``bool`` values
+            become ``"true"``/``"false"``.
+        json:
+            A JSON body (mutually exclusive with ``files``/``fields``).
+        files:
+            Multipart file parts as ``(field_name, file)`` tuples, where ``file``
+            is anything :class:`~klappstuhl.File` accepts (path, bytes, stream…).
+        fields:
+            Extra multipart text fields to send alongside ``files``.
+        expect:
+            How to decode the response: ``"json"`` (default), ``"bytes"``,
+            ``"text"``, or ``"none"``.
+        versioned:
+            Whether to prepend ``/api/v1`` (default) or the legacy ``/api`` root.
+
+        Returns
+        -------
+        The decoded body: a parsed object for ``"json"``, ``bytes``, ``str``, or
+        ``None`` — never a :mod:`klappstuhl.models` wrapper.
+
+        Examples
+        --------
+        Call an admin-only endpoint with a privileged key::
+
+            data = await client.request("GET", "/admin/updates")
+        """
+        parts = [(name, resolve_file(f)) for name, f in files] if files else None
+        return await self._http.request(
+            method,
+            path,
+            params=params,
+            json_body=json,
+            files=parts,
+            fields=fields,
+            expect=expect,
+            versioned=versioned,
+        )
 
     # -- internal helpers ----------------------------------------------------
 
