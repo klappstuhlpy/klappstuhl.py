@@ -20,9 +20,12 @@ __all__ = (
     "GuildImagesResult",
     "ImageInfo",
     "ImageUpdate",
+    "Paste",
     "RateLimit",
     "ScanReport",
     "ShareResult",
+    "ShortLink",
+    "Unfurl",
     "UploadResult",
     "VersionInfo",
 )
@@ -220,6 +223,77 @@ class GuildImagesResult:
     def from_dict(cls, data: Mapping[str, Any]) -> GuildImagesResult:
         images = [GuildImageInfo.from_dict(i) for i in data.get("images", []) or []]
         return cls(images=images, total=int(data.get("total", len(images))))
+
+
+@dataclass(frozen=True)
+class ShortLink:
+    """A short link (URL shortener entry)."""
+
+    code: str
+    short_url: str
+    target_url: str
+    clicks: int
+    created_at: str
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ShortLink:
+        return cls(
+            code=str(data["code"]),
+            short_url=str(data["short_url"]),
+            target_url=str(data["target_url"]),
+            clicks=int(data.get("clicks", 0)),
+            created_at=str(data.get("created_at", "")),
+        )
+
+
+@dataclass(frozen=True)
+class Paste:
+    """A hosted text/code paste."""
+
+    id: str
+    url: str
+    raw_url: str
+    content: str
+    views: int
+    created_at: str
+    language: str | None = None
+    expires_at: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> Paste:
+        return cls(
+            id=str(data["id"]),
+            url=str(data["url"]),
+            raw_url=str(data["raw_url"]),
+            content=str(data.get("content", "")),
+            views=int(data.get("views", 0)),
+            created_at=str(data.get("created_at", "")),
+            language=data.get("language"),
+            expires_at=data.get("expires_at"),
+        )
+
+
+@dataclass(frozen=True)
+class Unfurl:
+    """Open Graph / link-preview metadata for a URL."""
+
+    url: str
+    title: str | None = None
+    description: str | None = None
+    image: str | None = None
+    site_name: str | None = None
+    favicon: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> Unfurl:
+        return cls(
+            url=str(data.get("url", "")),
+            title=data.get("title"),
+            description=data.get("description"),
+            image=data.get("image"),
+            site_name=data.get("site_name"),
+            favicon=data.get("favicon"),
+        )
 
 
 @dataclass(frozen=True)

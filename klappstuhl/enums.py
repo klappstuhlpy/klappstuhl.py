@@ -33,6 +33,12 @@ class ApiErrorCode(IntEnum):
     NOT_FOUND = 6
     UNAUTHORIZED = 7
     RATE_LIMITED = 8
+    #: Request body failed validation; see the error's ``errors`` field map.
+    VALIDATION = 9
+    #: The request payload exceeded the maximum accepted size.
+    PAYLOAD_TOO_LARGE = 10
+    #: The request's media type is not supported for this endpoint.
+    UNSUPPORTED_MEDIA = 11
 
     @classmethod
     def _missing_(cls, value: object) -> ApiErrorCode:
@@ -58,6 +64,10 @@ class Scope(str, Enum):
 
     IMAGES_READ = "images:read"
     IMAGES_WRITE = "images:write"
+    LINKS_READ = "links:read"
+    LINKS_WRITE = "links:write"
+    PASTES_READ = "pastes:read"
+    PASTES_WRITE = "pastes:write"
     # Privileged — not grantable to a personal key (see the class docstring).
     GUILD_IMAGES = "images:guild"
     ADMIN_READ = "admin:read"

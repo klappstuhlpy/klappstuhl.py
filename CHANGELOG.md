@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-07
+
+### Added
+- Short links: `shorten`, `list_links`, `get_link`, `delete_link` (scopes
+  `links:read` / `links:write`).
+- Pastes: `create_paste`, `list_pastes`, `get_paste`, `delete_paste` (scopes
+  `pastes:read` / `pastes:write`).
+- `render_qr` — render text/URLs to a QR code (SVG or PNG).
+- `unfurl` — fetch a URL's Open Graph / link-preview metadata.
+- New response models `ShortLink`, `Paste`, `Unfurl`; new `Scope` members
+  (`links:*`, `pastes:*`) and `ApiErrorCode` values (`VALIDATION`,
+  `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA`).
+- Cursor pagination (`limit` / `before` / `after`) on `list_links` and
+  `list_pastes`.
+
 ## [0.2.0] - 2026-07-07
 
 ### Added
@@ -36,5 +51,6 @@ Initial release.
 - Flexible file inputs (path, bytes, stream, or `File`) and `share=True` support.
 - `py.typed` marker for downstream type-checking.
 
+[0.3.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.3.0
 [0.2.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.2.0
 [0.1.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.1.0

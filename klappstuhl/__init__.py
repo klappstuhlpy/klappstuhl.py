@@ -62,9 +62,12 @@ from .models import (
     GuildImagesResult,
     ImageInfo,
     ImageUpdate,
+    Paste,
     RateLimit,
     ScanReport,
     ShareResult,
+    ShortLink,
+    Unfurl,
     UploadResult,
     VersionInfo,
 )
@@ -90,6 +93,7 @@ __all__ = (
     # errors
     "KlappstuhlError",
     "NotFound",
+    "Paste",
     # models
     "RateLimit",
     "RateLimited",
@@ -97,9 +101,11 @@ __all__ = (
     "Scope",
     "ServerError",
     "ShareResult",
+    "ShortLink",
     "TranscodeFormat",
     "TransportError",
     "Unauthorized",
+    "Unfurl",
     "UpdateState",
     "UploadResult",
     "VersionInfo",

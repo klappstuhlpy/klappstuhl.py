@@ -25,9 +25,12 @@ from .models import (
     DeleteResult,
     GuildImagesResult,
     ImageInfo,
+    Paste,
     RateLimit,
     ScanReport,
     ShareResult,
+    ShortLink,
+    Unfurl,
     UploadResult,
 )
 
@@ -198,6 +201,164 @@ class Client:
         """Delete an image from a guild's gallery. Requires ``images:guild``."""
         data = await self._http.request("DELETE", f"/guilds/{guild_id}/images/{_bare_id(image_id)}")
         return DeleteResult.from_dict(data)
+
+    # -- short links ---------------------------------------------------------
+
+    async def shorten(self, url: str, *, code: str | None = None) -> ShortLink:
+        """Create a short link. Requires the ``links:write`` scope.
+
+        Parameters
+        ----------
+        url:
+            The destination URL. A missing scheme defaults to ``https://``.
+        code:
+            An optional custom alias (``[A-Za-z0-9_-]``, ≤64 chars). Omit for a
+            random code. Raises :class:`~klappstuhl.errors.HTTPError` (409) if the
+            alias is already taken.
+        """
+        body: dict[str, Any] = {"url": url}
+        if code is not None:
+            body["code"] = code
+        data = await self._http.request("POST", "/links", json_body=body)
+        return ShortLink.from_dict(data)
+
+    async def list_links(
+        self,
+        *,
+        limit: int | None = None,
+        before: str | None = None,
+        after: str | None = None,
+    ) -> list[ShortLink]:
+        """List your short links, newest first. Requires ``links:read``.
+
+        Supports cursor pagination via ``limit`` (1–200) and ``before``/``after``
+        (a link ``code`` cursor).
+        """
+        params = _page_params(limit, before, after)
+        data = await self._http.request("GET", "/links", params=params)
+        return [ShortLink.from_dict(x) for x in data or []]
+
+    async def get_link(self, code: str) -> ShortLink:
+        """Fetch one of your short links by code. Requires ``links:read``."""
+        data = await self._http.request("GET", f"/links/{code}")
+        return ShortLink.from_dict(data)
+
+    async def delete_link(self, code: str) -> ShortLink:
+        """Delete one of your short links by code. Requires ``links:write``.
+
+        Returns the deleted link.
+        """
+        data = await self._http.request("DELETE", f"/links/{code}")
+        return ShortLink.from_dict(data)
+
+    # -- pastes --------------------------------------------------------------
+
+    async def create_paste(
+        self,
+        content: str,
+        *,
+        language: str | None = None,
+        expires_in: int | None = None,
+    ) -> Paste:
+        """Create a hosted paste. Requires the ``pastes:write`` scope.
+
+        Parameters
+        ----------
+        content:
+            The paste body (≤512 KB).
+        language:
+            Optional syntect language token / extension (``rust``, ``py`` …) used
+            to pick a highlighter for the ``/p/<id>`` view.
+        expires_in:
+            Optional time-to-live in seconds (capped at 365 days). Omit for a
+            permanent paste.
+        """
+        body: dict[str, Any] = {"content": content}
+        if language is not None:
+            body["language"] = language
+        if expires_in is not None:
+            body["expires_in"] = expires_in
+        data = await self._http.request("POST", "/pastes", json_body=body)
+        return Paste.from_dict(data)
+
+    async def list_pastes(
+        self,
+        *,
+        limit: int | None = None,
+        before: str | None = None,
+        after: str | None = None,
+    ) -> list[Paste]:
+        """List your pastes, newest first. Requires ``pastes:read``.
+
+        Supports cursor pagination via ``limit`` (1–200) and ``before``/``after``
+        (a paste ``id`` cursor).
+        """
+        params = _page_params(limit, before, after)
+        data = await self._http.request("GET", "/pastes", params=params)
+        return [Paste.from_dict(x) for x in data or []]
+
+    async def get_paste(self, paste_id: str) -> Paste:
+        """Fetch one of your pastes by id. Requires ``pastes:read``."""
+        data = await self._http.request("GET", f"/pastes/{paste_id}")
+        return Paste.from_dict(data)
+
+    async def delete_paste(self, paste_id: str) -> Paste:
+        """Delete one of your pastes by id. Requires ``pastes:write``.
+
+        Returns the deleted paste.
+        """
+        data = await self._http.request("DELETE", f"/pastes/{paste_id}")
+        return Paste.from_dict(data)
+
+    # -- qr ------------------------------------------------------------------
+
+    async def render_qr(
+        self,
+        data: str,
+        *,
+        size: int | None = None,
+        format: Literal["svg", "png"] = "svg",
+        ecc: Literal["low", "medium", "quartile", "high"] | None = None,
+        margin: bool | None = None,
+    ) -> bytes:
+        """Render ``data`` as a QR code. Requires the ``images:read`` scope.
+
+        Returns the image bytes — an SVG (``format="svg"``, the default) or a PNG
+        (``format="png"``).
+
+        Parameters
+        ----------
+        data:
+            The text or URL to encode (≤4 KB).
+        size:
+            Target pixel size (64–2048; default 512).
+        format:
+            ``"svg"`` (default) or ``"png"``.
+        ecc:
+            Error-correction level: ``low``/``medium``/``quartile``/``high``.
+        margin:
+            Whether to include the surrounding quiet-zone margin (default on).
+        """
+        body: dict[str, Any] = {"data": data, "format": format}
+        if size is not None:
+            body["size"] = size
+        if ecc is not None:
+            body["ecc"] = ecc
+        if margin is not None:
+            body["margin"] = margin
+        result = await self._http.request("POST", "/render/qr", json_body=body, expect="bytes")
+        return cast(bytes, result)
+
+    # -- web -----------------------------------------------------------------
+
+    async def unfurl(self, url: str) -> Unfurl:
+        """Unfurl a URL into Open Graph / link-preview metadata.
+
+        Requires the ``images:read`` scope. The target is fetched SSRF-guarded
+        (private/reserved addresses are refused).
+        """
+        data = await self._http.request("GET", "/unfurl", params={"url": url})
+        return Unfurl.from_dict(data)
 
     # -- scan ----------------------------------------------------------------
 
@@ -600,6 +761,13 @@ class Client:
         if share:
             return ShareResult.from_dict(result)
         return cast(bytes, result)
+
+
+def _page_params(limit: int | None, before: str | None, after: str | None) -> dict[str, Any] | None:
+    """Build cursor-pagination query params, dropping the unset ones."""
+    params = {"limit": limit, "before": before, "after": after}
+    params = {k: v for k, v in params.items() if v is not None}
+    return params or None
 
 
 def _bare_id(image_id: str) -> str:
