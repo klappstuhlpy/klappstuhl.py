@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import io
 import mimetypes
 import os
@@ -48,16 +49,8 @@ class File:
     ) -> None:
         if isinstance(content, (bytes, bytearray)):
             data = bytes(content)
-        elif hasattr(content, "read"):
-            data = content.read()
-            if isinstance(data, str):  # opened in text mode
-                raise TypeError("file object must be opened in binary mode ('rb')")
-            if filename is None:
-                name = getattr(content, "name", None)
-                if isinstance(name, str):
-                    filename = os.path.basename(name)
         else:  # pragma: no cover - defensive
-            raise TypeError(f"unsupported file content: {type(content)!r}")
+            raise TypeError(f"unsupported file content: {type(content)!r} (expected bytes, bytearray, or IO)")
 
         self.content: bytes = data
         self.filename: str = filename or "upload"
@@ -89,7 +82,7 @@ class File:
         )
 
 
-def resolve_file(value: FileInput) -> File:
+async def resolve_file(value: FileInput) -> File:
     """Coerce any :data:`FileInput` into a concrete :class:`File`."""
 
     if isinstance(value, File):
@@ -98,6 +91,14 @@ def resolve_file(value: FileInput) -> File:
         return File(value)
     if isinstance(value, (str, os.PathLike)):
         return File.from_path(value)
-    if isinstance(value, io.IOBase) or hasattr(value, "read"):
+    if isinstance(value, io.IOBase):
         return File(value)
-    raise TypeError(f"cannot use {type(value)!r} as a file input")
+    if hasattr(value, "read"):
+        filename = getattr(value, "name", None) or getattr(value, "filename", None)
+        if isinstance(filename, str):
+            filename = os.path.basename(filename)
+
+        if inspect.iscoroutinefunction(value.read):
+            return File(await value.read(), filename=filename)
+        return File(value.read(), filename=filename)
+    raise TypeError(f"cannot use {type(value)!r} as a file input (expected bytes, bytearray, IO, or File that supports .read())")

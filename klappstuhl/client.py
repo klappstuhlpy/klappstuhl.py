@@ -140,7 +140,7 @@ class Client:
         """
         if not files:
             raise ValueError("upload() requires at least one file")
-        parts = [("file", resolve_file(f)) for f in files]
+        parts = [("file", await resolve_file(f)) for f in files]
         params = {"expires_in": expires_in} if expires_in is not None else None
         data = await self._http.request("POST", "/images/upload", params=params, files=parts)
         return UploadResult.from_dict(data)
@@ -185,7 +185,7 @@ class Client:
         """
         if not files:
             raise ValueError("upload_guild_images() requires at least one file")
-        parts = [("file", resolve_file(f)) for f in files]
+        parts = [("file", await resolve_file(f)) for f in files]
         params = {"expires_in": expires_in} if expires_in is not None else None
         data = await self._http.request(
             "POST", f"/guilds/{guild_id}/images/upload", params=params, files=parts
@@ -368,7 +368,7 @@ class Client:
         Any file type is accepted. Nothing is persisted and only the file's
         SHA-256 (never its contents) is sent to VirusTotal.
         """
-        data = await self._http.request("POST", "/scan", files=[("file", resolve_file(file))])
+        data = await self._http.request("POST", "/scan", files=[("file", await resolve_file(file))])
         return ScanReport.from_dict(data)
 
     # -- media (metadata / manipulate / convert) -----------------------------
@@ -385,7 +385,7 @@ class Client:
         (a public http(s) image the server fetches; private/reserved addresses
         are refused).
         """
-        files, fields = _image_source(file, url)
+        files, fields = await _image_source(file, url)
         data = await self._http.request("POST", "/metadata", files=files, fields=fields)
         return ImageInfo.from_dict(data)
 
@@ -450,7 +450,7 @@ class Client:
     ) -> bytes | ShareResult:
         # Non-overloaded worker shared by ``manipulate`` and the per-effect
         # convenience wrappers, so callers never trip the overload resolution.
-        files, fields = _image_source(file, url)
+        files, fields = await _image_source(file, url)
         params: dict[str, Any] = {"amount": amount, "share": share}
         op_name = op.value if isinstance(op, Effect) else op
         return await self._binary_or_share(
@@ -516,7 +516,7 @@ class Client:
         share:
             Return a :class:`ShareResult` link instead of raw bytes.
         """
-        files, fields = _image_source(file, url)
+        files, fields = await _image_source(file, url)
         params: dict[str, Any] = {
             "to": str(to),
             "quality": quality,
@@ -666,7 +666,7 @@ class Client:
         """
         return await self._binary_or_share(
             "POST", "/convert/transcode", params={"to": str(to), "share": share},
-            files=[("file", resolve_file(file))], share=share,
+            files=[("file", await resolve_file(file))], share=share,
         )
 
     # -- raw / escape hatch --------------------------------------------------
@@ -727,7 +727,7 @@ class Client:
 
             data = await client.request("GET", "/admin/updates")
         """
-        parts = [(name, resolve_file(f)) for name, f in files] if files else None
+        parts = [(name, await resolve_file(f)) for name, f in files] if files else None
         return await self._http.request(
             method,
             path,
@@ -775,12 +775,12 @@ def _bare_id(image_id: str) -> str:
     return image_id.split("/")[-1].split(".")[0]
 
 
-def _image_source(
+async def _image_source(
     file: FileInput | None, url: str | None
 ) -> tuple[list[tuple[str, File]] | None, dict[str, str] | None]:
     """Build the multipart parts for endpoints that take a ``file`` OR a ``url``."""
     if (file is None) == (url is None):
         raise ValueError("provide exactly one of `file` or `url`")
     if file is not None:
-        return [("file", resolve_file(file))], None
+        return [("file", await resolve_file(file))], None
     return None, {"url": url or ""}
