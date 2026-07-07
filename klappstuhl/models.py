@@ -16,8 +16,6 @@ from .enums import UpdateState
 __all__ = (
     "ApiVersions",
     "DeleteResult",
-    "GuildImageInfo",
-    "GuildImagesResult",
     "ImageInfo",
     "ImageUpdate",
     "Paste",
@@ -183,46 +181,6 @@ class ScanReport:
             vt_total=data.get("vt_total"),
             vt_url=data.get("vt_url"),
         )
-
-
-@dataclass(frozen=True)
-class GuildImageInfo:
-    """A single image in a Discord guild's shared gallery."""
-
-    id: str
-    ext: str
-    mimetype: str
-    size: int
-    uploaded_at: str
-    url: str
-    raw_url: str
-    original_name: str | None = None
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> GuildImageInfo:
-        return cls(
-            id=str(data["id"]),
-            ext=str(data["ext"]),
-            mimetype=str(data["mimetype"]),
-            size=int(data["size"]),
-            uploaded_at=str(data["uploaded_at"]),
-            url=str(data["url"]),
-            raw_url=str(data["raw_url"]),
-            original_name=data.get("original_name"),
-        )
-
-
-@dataclass(frozen=True)
-class GuildImagesResult:
-    """A listing of a guild's gallery."""
-
-    images: list[GuildImageInfo]
-    total: int
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> GuildImagesResult:
-        images = [GuildImageInfo.from_dict(i) for i in data.get("images", []) or []]
-        return cls(images=images, total=int(data.get("total", len(images))))
 
 
 @dataclass(frozen=True)

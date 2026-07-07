@@ -58,8 +58,6 @@ from .file import File, FileInput
 from .models import (
     ApiVersions,
     DeleteResult,
-    GuildImageInfo,
-    GuildImagesResult,
     ImageInfo,
     ImageUpdate,
     Paste,
@@ -84,8 +82,6 @@ __all__ = (
     "File",
     "FileInput",
     "Forbidden",
-    "GuildImageInfo",
-    "GuildImagesResult",
     "HTTPError",
     "ImageFormat",
     "ImageInfo",

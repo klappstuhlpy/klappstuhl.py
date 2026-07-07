@@ -2,7 +2,6 @@ from klappstuhl.enums import UpdateState
 from klappstuhl.models import (
     ApiVersions,
     DeleteResult,
-    GuildImagesResult,
     ImageInfo,
     ImageUpdate,
     RateLimit,
@@ -63,17 +62,6 @@ def test_scan_report_verdicts():
     )
     assert bad.is_infected
     assert bad.vt_positives == 40
-
-
-def test_guild_images_result():
-    res = GuildImagesResult.from_dict(
-        {"images": [{"id": "i", "ext": "png", "mimetype": "image/png", "size": 5,
-                     "uploaded_at": "2026-07-06T00:00:00Z", "url": "u", "raw_url": "r"}],
-         "total": 1}
-    )
-    assert res.total == 1
-    assert res.images[0].id == "i"
-    assert res.images[0].original_name is None
 
 
 def test_image_update_unknown_state_degrades():

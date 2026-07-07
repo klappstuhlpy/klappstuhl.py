@@ -43,19 +43,19 @@ def test_file_from_path(tmp_path):
     assert f.content_type == "image/gif"
 
 
-def test_resolve_file_variants(tmp_path):
+async def test_resolve_file_variants(tmp_path):
     p = tmp_path / "y.png"
     p.write_bytes(b"data")
 
-    assert resolve_file(b"raw").content == b"raw"
-    assert resolve_file(str(p)).filename == "y.png"
-    assert resolve_file(p).filename == "y.png"
-    assert resolve_file(io.BytesIO(b"stream")).content == b"stream"
+    assert (await resolve_file(b"raw")).content == b"raw"
+    assert (await resolve_file(str(p))).filename == "y.png"
+    assert (await resolve_file(p)).filename == "y.png"
+    assert (await resolve_file(io.BytesIO(b"stream"))).content == b"stream"
 
     existing = File(b"z")
-    assert resolve_file(existing) is existing
+    assert await resolve_file(existing) is existing
 
 
-def test_resolve_file_rejects_unknown():
+async def test_resolve_file_rejects_unknown():
     with pytest.raises(TypeError):
-        resolve_file(12345)  # type: ignore[arg-type]
+        await resolve_file(12345)  # type: ignore[arg-type]

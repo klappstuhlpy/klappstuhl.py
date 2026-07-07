@@ -12,8 +12,8 @@ A fast, fully-typed **async** Python wrapper for the [klappstuhl.me](https://kla
 </div>
 
 Image hosting, media manipulation, format conversion, rendering (code screenshots, QR codes, web-page
-screenshots, Markdown→PDF), malware scanning, URL shortening, paste hosting, link unfurling, and
-Discord-guild galleries — all behind one typed client.
+screenshots, Markdown→PDF), malware scanning, URL shortening, paste hosting and link unfurling, 
+all behind one typed client.
 
 - **Async**, built on `aiohttp` with connection reuse.
 - **Reliable** — automatic retries with exponential backoff for network blips and `5xx`, and transparent `429`
@@ -130,7 +130,6 @@ signatures live in the docstrings and the [interactive API docs](https://klappst
 | **Render**          | `render_code()`, `render_qr()`, `screenshot()`, `markdown_pdf()`, `transcode()`              |
 | **Web**             | `unfurl()` — Open Graph / link-preview metadata                                              |
 | **Scan**            | `scan()` — ClamAV + VirusTotal                                                               |
-| **Guild galleries** | `upload_guild_images()`, `list_guild_images()`, `delete_guild_image()`                       |
 | **Escape hatch**    | `request()` — hand-craft any request (e.g. admin-only routes)                                |
 
 List endpoints (`list_links`, `list_pastes`) take Discord-style cursor pagination: `limit`,

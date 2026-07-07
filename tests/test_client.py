@@ -112,24 +112,6 @@ async def test_transcode(client, server):
     assert server.last_request()["query"]["to"] == "mp4"
 
 
-async def test_guild_gallery_roundtrip(client, server):
-    server.add("POST", "/api/v1/guilds/42/images/upload", json={
-        "total": 1, "errors": 0, "skipped": 0, "infected": 0, "links": ["l"], "raw_links": ["r"]})
-    server.add("GET", "/api/v1/guilds/42/images", json={
-        "images": [{"id": "i", "ext": "png", "mimetype": "image/png", "size": 3,
-                    "uploaded_at": "2026-07-06T00:00:00Z", "url": "u", "raw_url": "ru"}],
-        "total": 1})
-    server.add("DELETE", "/api/v1/guilds/42/images/i", json={"file": "i", "failed": False})
-
-    up = await client.upload_guild_images(42, b"img")
-    listed = await client.list_guild_images(42)
-    deleted = await client.delete_guild_image(42, "i.png")
-
-    assert up.total == 1
-    assert listed.images[0].id == "i"
-    assert deleted.file == "i"
-
-
 async def test_raw_request_escape_hatch(client, server):
     # The raw ``request`` escape hatch reaches endpoints not on the typed
     # surface (e.g. the admin-only routes) and returns the unwrapped body.

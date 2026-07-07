@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import io
 import mimetypes
 import os
@@ -89,7 +90,7 @@ class File:
         )
 
 
-def resolve_file(value: FileInput) -> File:
+async def resolve_file(value: FileInput) -> File:
     """Coerce any :data:`FileInput` into a concrete :class:`File`."""
 
     if isinstance(value, File):
@@ -98,6 +99,14 @@ def resolve_file(value: FileInput) -> File:
         return File(value)
     if isinstance(value, (str, os.PathLike)):
         return File.from_path(value)
-    if isinstance(value, io.IOBase) or hasattr(value, "read"):
+    if isinstance(value, io.IOBase):
         return File(value)
-    raise TypeError(f"cannot use {type(value)!r} as a file input")
+    if hasattr(value, "read"):
+        filename = getattr(value, "name", None) or getattr(value, "filename", None)
+        if inspect.iscoroutinefunction(value.read):
+            return File(await value.read(), filename=filename)
+        return File(value.read(), filename=filename)
+    raise TypeError(
+        f"cannot use {type(value)!r} as a file input "
+        "(expected bytes, bytearray, IO, or File that supports .read())"
+    )
