@@ -43,28 +43,29 @@ The package is distributed via **GitHub releases** (not on PyPI yet), so install
 repository and pin to a released tag:
 
 ```bash
-pip install "klappstuhl @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.3.0"
+pip install "klappstuhl.py @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.4.0"
 # or
-poetry add "git+https://github.com/klappstuhlpy/klappstuhl.py#v0.3.0"
+poetry add "git+https://github.com/klappstuhlpy/klappstuhl.py#v0.4.0"
 ```
 
 Optional C-accelerated `aiohttp` extras (the `speed` extra):
 
 ```bash
-pip install "klappstuhl[speed] @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.3.0"
+pip install "klappstuhl.py[speed] @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.4.0"
 ```
 
 Or, declaring it as a project dependency:
 
 ```toml
 # PEP 621 — pyproject.toml [project.dependencies]
-dependencies = ["klappstuhl @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.3.0"]
+dependencies = ["klappstuhl.py @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.4.0"]
 
 # Poetry — [tool.poetry.dependencies]
-klappstuhl = { git = "https://github.com/klappstuhlpy/klappstuhl.py", tag = "v0.3.0" }
+"klappstuhl.py" = { git = "https://github.com/klappstuhlpy/klappstuhl.py", tag = "v0.4.0" }
 ```
 
-Requires Python 3.9+.
+The distribution installs as **`klappstuhl.py`**, but you import it as **`klappstuhl`**
+(same convention as discord.py). Requires Python 3.9+.
 
 ## Authentication
 
