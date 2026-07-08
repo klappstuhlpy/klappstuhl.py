@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-08
+
+### Changed
+- Renamed the distribution to **`klappstuhl.py`** (install with
+  `pip install klappstuhl.py`). The import package is unchanged — still
+  `import klappstuhl` — matching the discord.py convention.
+
+### Docs
+- Added a Sphinx documentation site (autodoc + napoleon + furo) that generates
+  the full API reference from the library's docstrings, published via Read the
+  Docs (`.readthedocs.yaml`).
+
 ## [0.4.0] - 2026-07-08
 
 Tracks the server-side API 1.3.0 release.
