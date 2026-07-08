@@ -3,6 +3,25 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-08
+
+Tracks the server-side API 1.3.0 release.
+
+### Added
+- `render_chart` — server-side SVG charts (line, area, bar, scatter, pie,
+  donut) from plain Python data; supports `share=True`. New enums `ChartKind`
+  and `ChartTheme`, plus the `ChartPoint` type alias.
+- `me` / `usage` — account introspection: identity + the key's granted scopes
+  (`Me`), and resource totals with a chart-ready zero-filled 30-day upload
+  series (`Usage`, `ResourceUsage`, `UsageSeries`). Work with any valid key,
+  no specific scope required.
+- `color_palette` — extract an image's dominant colors (`Palette`,
+  `PaletteColor`), from a file or a public URL.
+- `update_link` — repoint a short link at a new destination (`PATCH
+  /links/{code}`, scope `links:write`).
+- `Scope.is_privileged` — distinguish the operator-only scopes
+  (`images:guild`, `admin:*`) from user-grantable ones programmatically.
+
 ## [0.3.1] - 2026-07-07
 
 ### Fixed
@@ -64,6 +83,7 @@ Initial release.
 - Flexible file inputs (path, bytes, stream, or `File`) and `share=True` support.
 - `py.typed` marker for downstream type-checking.
 
+[0.4.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.4.0
 [0.3.1]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.3.1
 [0.3.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.3.0
 [0.2.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.2.0

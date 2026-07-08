@@ -12,18 +12,21 @@ async context manager so the underlying session is always cleaned up::
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from types import TracebackType
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, Union, cast, overload
 
 import aiohttp
 
-from .enums import Effect, ImageFormat, TranscodeFormat
+from .enums import ChartKind, ChartTheme, Effect, ImageFormat, TranscodeFormat
 from .file import File, FileInput, resolve_file
 from .http import DEFAULT_BASE_URL, HTTPClient
 from .models import (
     ApiVersions,
     DeleteResult,
     ImageInfo,
+    Me,
+    Palette,
     Paste,
     RateLimit,
     ScanReport,
@@ -31,9 +34,13 @@ from .models import (
     ShortLink,
     Unfurl,
     UploadResult,
+    Usage,
 )
 
 __all__ = ("Client",)
+
+#: One chart data point: a bare y-value, or an ``(x, y)`` pair (line/area/scatter only).
+ChartPoint = Union[float, "tuple[float, float]"]
 
 
 class Client:
@@ -115,6 +122,36 @@ class Client:
         """
         data = await self._http.request("GET", "", expect="json", versioned=False)
         return ApiVersions.from_dict(data)
+
+    # -- account -------------------------------------------------------------
+
+    async def me(self) -> Me:
+        """Return the account behind this API key, plus the key's scopes.
+
+        Works with **any** valid key — no specific scope required. Useful for
+        "connected as …" UI and for debugging which scopes a key actually holds
+        (an empty ``key_scopes`` list means a legacy full-access key).
+        """
+        data = await self._http.request("GET", "/me")
+        return Me.from_dict(data)
+
+    async def usage(self) -> Usage:
+        """Return the account's usage snapshot. No specific scope required.
+
+        Includes image/link/paste totals and a zero-filled 30-day upload
+        series (:class:`~klappstuhl.UsageSeries`) whose shape drops straight
+        into :meth:`render_chart`::
+
+            usage = await client.usage()
+            svg = await client.render_chart(
+                "line",
+                {"uploads": usage.series.uploads},
+                labels=usage.series.days,
+                title="Uploads, last 30 days",
+            )
+        """
+        data = await self._http.request("GET", "/me/usage")
+        return Usage.from_dict(data)
 
     # -- images (upload / delete / download) ---------------------------------
 
@@ -207,6 +244,16 @@ class Client:
     async def get_link(self, code: str) -> ShortLink:
         """Fetch one of your short links by code. Requires ``links:read``."""
         data = await self._http.request("GET", f"/links/{code}")
+        return ShortLink.from_dict(data)
+
+    async def update_link(self, code: str, url: str) -> ShortLink:
+        """Repoint a short link at a new destination. Requires ``links:write``.
+
+        The code stays the same, so anything already sharing the short URL
+        keeps working. A missing scheme in ``url`` defaults to ``https://``.
+        Returns the updated link.
+        """
+        data = await self._http.request("PATCH", f"/links/{code}", json_body={"url": url})
         return ShortLink.from_dict(data)
 
     async def delete_link(self, code: str) -> ShortLink:
@@ -354,6 +401,31 @@ class Client:
         files, fields = await _image_source(file, url)
         data = await self._http.request("POST", "/metadata", files=files, fields=fields)
         return ImageInfo.from_dict(data)
+
+    async def color_palette(
+        self,
+        file: FileInput | None = None,
+        *,
+        url: str | None = None,
+        count: int | None = None,
+    ) -> Palette:
+        """Extract an image's dominant colors. Requires ``images:read``.
+
+        Returns a :class:`~klappstuhl.Palette` with the colors ordered by
+        coverage — handy for theming, accent-color picks, or Discord embed
+        colors.
+
+        Parameters
+        ----------
+        file / url:
+            The source image (exactly one).
+        count:
+            How many colors to return (1–12, default 6).
+        """
+        files, fields = await _image_source(file, url)
+        params = {"count": count} if count is not None else None
+        data = await self._http.request("POST", "/color/palette", params=params, files=files, fields=fields)
+        return Palette.from_dict(data)
 
     @overload
     async def manipulate(
@@ -533,6 +605,103 @@ class Client:
             body["theme"] = theme
         return await self._binary_or_share(
             "POST", "/render/code", params={"share": share}, json_body=body, share=share
+        )
+
+    @overload
+    async def render_chart(self, kind: ChartKind | str, series: Mapping[str, Sequence[ChartPoint]], *,
+                           labels: Sequence[str] | None = ..., title: str | None = ...,
+                           theme: ChartTheme | str | None = ..., width: int | None = ...,
+                           height: int | None = ..., x_label: str | None = ..., y_label: str | None = ...,
+                           share: Literal[False] = ...) -> bytes: ...
+
+    @overload
+    async def render_chart(self, kind: ChartKind | str, series: Mapping[str, Sequence[ChartPoint]], *,
+                           labels: Sequence[str] | None = ..., title: str | None = ...,
+                           theme: ChartTheme | str | None = ..., width: int | None = ...,
+                           height: int | None = ..., x_label: str | None = ..., y_label: str | None = ...,
+                           share: Literal[True]) -> ShareResult: ...
+
+    async def render_chart(
+        self,
+        kind: ChartKind | str,
+        series: Mapping[str, Sequence[ChartPoint]],
+        *,
+        labels: Sequence[str] | None = None,
+        title: str | None = None,
+        theme: ChartTheme | str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        x_label: str | None = None,
+        y_label: str | None = None,
+        share: bool = False,
+    ) -> bytes | ShareResult:
+        """Render a chart to an SVG server-side. Requires ``images:read``.
+
+        No client-side charting library needed — the server draws the chart
+        with colorblind-validated palettes and returns ``image/svg+xml`` bytes
+        (or a :class:`ShareResult` when ``share=True``).
+
+        Parameters
+        ----------
+        kind:
+            The chart form: ``line``, ``area``, ``bar``, ``scatter``, ``pie``,
+            or ``donut`` (see :class:`~klappstuhl.ChartKind`). Pie/donut take
+            exactly one series with at most 7 non-negative values.
+        series:
+            Series name → data points, in plot order (at most 7 series). Points
+            are numbers (``[3, 1, 4]``; x is the index / matching label) or
+            ``(x, y)`` pairs — pairs only for line, area, and scatter.
+        labels:
+            Category labels along the x-axis, or the slice labels for
+            pie/donut.
+        title:
+            Optional title drawn above the plot (≤120 chars).
+        theme:
+            ``dark`` (server default) or ``light``
+            (see :class:`~klappstuhl.ChartTheme`).
+        width / height:
+            Image size in px (clamped server-side to 320–1600 × 240–1000;
+            defaults 860×480).
+        x_label / y_label:
+            Optional axis captions.
+        share:
+            Return a :class:`ShareResult` with a short ``/m/<id>`` link instead
+            of the raw SVG bytes.
+
+        Example
+        -------
+        ::
+
+            svg = await client.render_chart(
+                "line",
+                {"api": [120, 180, 90], "web": [80, 90, 130]},
+                labels=["Mon", "Tue", "Wed"],
+                title="Requests per day",
+            )
+        """
+        body: dict[str, Any] = {
+            "kind": str(kind),
+            "series": [
+                {"label": name, "data": [list(p) if isinstance(p, tuple) else p for p in points]}
+                for name, points in series.items()
+            ],
+        }
+        if labels is not None:
+            body["labels"] = list(labels)
+        if title is not None:
+            body["title"] = title
+        if theme is not None:
+            body["theme"] = str(theme)
+        if width is not None:
+            body["width"] = width
+        if height is not None:
+            body["height"] = height
+        if x_label is not None:
+            body["x_label"] = x_label
+        if y_label is not None:
+            body["y_label"] = y_label
+        return await self._binary_or_share(
+            "POST", "/render/chart", params={"share": share}, json_body=body, share=share
         )
 
     @overload

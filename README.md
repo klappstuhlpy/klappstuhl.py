@@ -11,9 +11,9 @@ A fast, fully-typed **async** Python wrapper for the [klappstuhl.me](https://kla
 
 </div>
 
-Image hosting, media manipulation, format conversion, rendering (code screenshots, QR codes, web-page
-screenshots, Markdown→PDF), malware scanning, URL shortening, paste hosting and link unfurling, 
-all behind one typed client.
+Image hosting, media manipulation, format conversion, color-palette extraction, rendering (code
+screenshots, QR codes, SVG charts, web-page screenshots, Markdown→PDF), malware scanning, URL
+shortening, paste hosting, link unfurling, and account/usage introspection, all behind one typed client.
 
 - **Async**, built on `aiohttp` with connection reuse.
 - **Reliable** — automatic retries with exponential backoff for network blips and `5xx`, and transparent `429`
@@ -80,16 +80,17 @@ client = klappstuhl.Client("my-api-key")
 
 API keys are **scoped**. A key with *no* scopes is treated as unrestricted (legacy). Otherwise each
 endpoint requires a specific scope — calling without it raises `Forbidden`. All the scopes below are
-**user-grantable** on your [account page](https://klappstuhl.me/account):
+**user-grantable** on your [account page](https://klappstuhl.me/account). `me()` and `usage()` work
+with any valid key, no specific scope needed:
 
-| Scope          | Grants                                                                    |
-|----------------|---------------------------------------------------------------------------|
-| `images:read`  | download, scan, metadata, manipulate, convert, render (code / QR), unfurl |
-| `images:write` | upload, delete                                                            |
-| `links:read`   | list + read your short links                                              |
-| `links:write`  | create + delete short links                                               |
-| `pastes:read`  | list + read your pastes                                                   |
-| `pastes:write` | create + delete pastes                                                    |
+| Scope          | Grants                                                                                     |
+|----------------|--------------------------------------------------------------------------------------------|
+| `images:read`  | download, scan, metadata, manipulate, convert, palette, render (code / QR / chart), unfurl |
+| `images:write` | upload, delete                                                                             |
+| `links:read`   | list + read your short links                                                               |
+| `links:write`  | create + delete short links                                                                |
+| `pastes:read`  | list + read your pastes                                                                    |
+| `pastes:write` | create + delete pastes                                                                     |
 
 ## Client options
 
@@ -120,17 +121,18 @@ All methods are coroutines on `Client`; each returns a typed model from `klappst
 server-side and return a `ShareResult(id, url, content_type)` with a short `/m/<id>` link. Full
 signatures live in the docstrings and the [interactive API docs](https://klappstuhl.me/api/docs).
 
-| Area                | Methods                                                                                      |
-|---------------------|----------------------------------------------------------------------------------------------|
-| **Discovery**       | `versions()` — the unauthenticated `GET /api` version document                               |
-| **Images**          | `upload()`, `delete_image()`, `download()`                                                   |
-| **Short links**     | `shorten()`, `list_links()`, `get_link()`, `delete_link()`                                   |
-| **Pastes**          | `create_paste()`, `list_pastes()`, `get_paste()`, `delete_paste()`                           |
-| **Media**           | `metadata()`, `manipulate()` (`blur`/`pixelate`/`deepfry`/`invert`/`grayscale`), `convert()` |
-| **Render**          | `render_code()`, `render_qr()`, `screenshot()`, `markdown_pdf()`, `transcode()`              |
-| **Web**             | `unfurl()` — Open Graph / link-preview metadata                                              |
-| **Scan**            | `scan()` — ClamAV + VirusTotal                                                               |
-| **Escape hatch**    | `request()` — hand-craft any request (e.g. admin-only routes)                                |
+| Area                | Methods                                                                                                         |
+|---------------------|-----------------------------------------------------------------------------------------------------------------|
+| **Discovery**       | `versions()` — the unauthenticated `GET /api` version document                                                  |
+| **Images**          | `upload()`, `delete_image()`, `download()`                                                                      |
+| **Account**         | `me()` — identity + key scopes, `usage()` — totals + a chart-ready 30-day series                                |
+| **Short links**     | `shorten()`, `list_links()`, `get_link()`, `update_link()`, `delete_link()`                                     |
+| **Pastes**          | `create_paste()`, `list_pastes()`, `get_paste()`, `delete_paste()`                                              |
+| **Media**           | `metadata()`, `manipulate()` (`blur`/`pixelate`/`deepfry`/`invert`/`grayscale`), `convert()`, `color_palette()` |
+| **Render**          | `render_code()`, `render_qr()`, `render_chart()`, `screenshot()`, `markdown_pdf()`, `transcode()`               |
+| **Web**             | `unfurl()` — Open Graph / link-preview metadata                                                                 |
+| **Scan**            | `scan()` — ClamAV + VirusTotal                                                                                  |
+| **Escape hatch**    | `request()` — hand-craft any request (e.g. admin-only routes)                                                   |
 
 List endpoints (`list_links`, `list_pastes`) take Discord-style cursor pagination: `limit`,
 `before`, `after`.

@@ -33,9 +33,11 @@ except PackageNotFoundError:  # running from a source tree that was never instal
 __author__ = "klappstuhlpy"
 __license__ = "MIT"
 
-from .client import Client
+from .client import ChartPoint, Client
 from .enums import (
     ApiErrorCode,
+    ChartKind,
+    ChartTheme,
     Effect,
     ImageFormat,
     Scope,
@@ -60,13 +62,19 @@ from .models import (
     DeleteResult,
     ImageInfo,
     ImageUpdate,
+    Me,
+    Palette,
+    PaletteColor,
     Paste,
     RateLimit,
+    ResourceUsage,
     ScanReport,
     ShareResult,
     ShortLink,
     Unfurl,
     UploadResult,
+    Usage,
+    UsageSeries,
     VersionInfo,
 )
 
@@ -75,6 +83,9 @@ __all__ = (
     "ApiErrorCode",
     "ApiVersions",
     "BadRequest",
+    "ChartKind",
+    "ChartPoint",
+    "ChartTheme",
     "Client",
     "DeleteResult",
     "Effect",
@@ -88,11 +99,15 @@ __all__ = (
     "ImageUpdate",
     # errors
     "KlappstuhlError",
+    "Me",
     "NotFound",
+    "Palette",
+    "PaletteColor",
     "Paste",
     # models
     "RateLimit",
     "RateLimited",
+    "ResourceUsage",
     "ScanReport",
     "Scope",
     "ServerError",
@@ -104,6 +119,8 @@ __all__ = (
     "Unfurl",
     "UpdateState",
     "UploadResult",
+    "Usage",
+    "UsageSeries",
     "VersionInfo",
     "__version__",
 )

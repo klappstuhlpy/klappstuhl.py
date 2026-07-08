@@ -46,6 +46,22 @@ async def main() -> None:
         except klappstuhl.ServerError as e:
             print("screenshot unavailable:", e.message)
 
+        # 6. Extract an image's dominant colors (e.g. for embed accents).
+        palette = await client.color_palette(url="https://http.cat/200.jpg", count=4)
+        print("palette:", ", ".join(c.hex for c in palette.colors))
+
+        # 7. Render a chart server-side — no plotting library needed. Here:
+        #    your own 30-day upload activity, straight from `usage()`.
+        usage = await client.usage()
+        chart = await client.render_chart(
+            klappstuhl.ChartKind.LINE,
+            {"uploads": usage.series.uploads},
+            labels=usage.series.days,
+            title="Uploads, last 30 days",
+            share=True,
+        )
+        print("chart:", chart.url)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -181,3 +181,95 @@ async def test_rate_limit_headers_exposed(client, server):
     assert client.rate_limit is not None
     assert client.rate_limit.limit == 25
     assert client.rate_limit.remaining == 24
+
+
+async def test_me(client, server):
+    server.add("GET", "/api/v1/me", json={
+        "id": 7, "name": "ben", "admin": False, "totp_enabled": True,
+        "discord_linked": True, "key_scopes": ["images:read", "links:write"]})
+    me = await client.me()
+    assert me.id == 7 and me.name == "ben"
+    assert me.totp_enabled and me.discord_linked and not me.admin
+    assert me.key_scopes == ["images:read", "links:write"]
+    # Scope values in the response map onto the enum, including privilege info.
+    scopes = [klappstuhl.Scope(s) for s in me.key_scopes]
+    assert not any(s.is_privileged for s in scopes)
+
+
+async def test_usage_series_is_chart_ready(client, server):
+    server.add("GET", "/api/v1/me/usage", json={
+        "images": {"count": 3, "bytes": 4096, "views": 12},
+        "links": {"count": 2, "bytes": 0, "views": 40},
+        "pastes": {"count": 1, "bytes": 0, "views": 5},
+        "series": {"days": ["2026-07-07", "2026-07-08"], "uploads": [0, 3],
+                   "upload_bytes": [0, 4096]}})
+    usage = await client.usage()
+    assert usage.images.count == 3 and usage.images.bytes == 4096
+    assert usage.links.views == 40  # clicks surface as views
+    # The series arrays line up so they can feed render_chart directly.
+    assert len(usage.series.days) == len(usage.series.uploads) == len(usage.series.upload_bytes)
+
+
+async def test_update_link(client, server):
+    server.add("PATCH", "/api/v1/links/abc", json={
+        "code": "abc", "short_url": "https://r.klappstuhl.me/abc",
+        "target_url": "https://new.example.com/", "clicks": 5,
+        "created_at": "2026-07-01T00:00:00Z"})
+    link = await client.update_link("abc", "new.example.com")
+    assert link.target_url == "https://new.example.com/"
+    req = server.last_request()
+    assert req["method"] == "PATCH"
+    assert b"new.example.com" in req["body"]
+
+
+async def test_render_chart_builds_spec(client, server):
+    import json as _json
+
+    server.add("POST", "/api/v1/render/chart", body=b"<svg>chart</svg>",
+               content_type="image/svg+xml")
+    out = await client.render_chart(
+        klappstuhl.ChartKind.LINE,
+        {"api": [1, 2, 3], "web": [(0, 4), (1, 5)]},
+        labels=["a", "b", "c"],
+        title="T",
+        theme=klappstuhl.ChartTheme.DARK,
+        width=700,
+        y_label="req",
+    )
+    assert out.startswith(b"<svg")
+    body = _json.loads(server.last_request()["body"])
+    assert body["kind"] == "line" and body["theme"] == "dark"
+    assert body["series"][0] == {"label": "api", "data": [1, 2, 3]}
+    # (x, y) tuples serialize as [x, y] pairs.
+    assert body["series"][1]["data"] == [[0, 4], [1, 5]]
+    assert body["labels"] == ["a", "b", "c"]
+    assert body["width"] == 700 and body["y_label"] == "req"
+    assert "height" not in body  # unset optionals are omitted
+
+
+async def test_render_chart_share(client, server):
+    server.add("POST", "/api/v1/render/chart", json={
+        "id": "c1", "url": "https://klappstuhl.me/m/c1", "content_type": "image/svg+xml"})
+    out = await client.render_chart("pie", {"split": [3, 1]}, labels=["a", "b"], share=True)
+    assert isinstance(out, klappstuhl.ShareResult)
+    assert out.id == "c1"
+    assert server.last_request()["query"]["share"] == "true"
+
+
+async def test_color_palette(client, server):
+    server.add("POST", "/api/v1/color/palette", json={
+        "colors": [
+            {"hex": "#d97757", "rgb": [217, 119, 87], "proportion": 0.6},
+            {"hex": "#0e0e10", "rgb": [14, 14, 16], "proportion": 0.4},
+        ],
+        "pixels_sampled": 9216})
+    palette = await client.color_palette(b"png-bytes", count=2)
+    assert palette.pixels_sampled == 9216
+    assert palette.colors[0].hex == "#d97757"
+    assert palette.colors[0].rgb == (217, 119, 87)
+    assert server.last_request()["query"]["count"] == "2"
+
+
+async def test_color_palette_requires_one_source(client):
+    with pytest.raises(ValueError):
+        await client.color_palette()

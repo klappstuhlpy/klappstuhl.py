@@ -6,6 +6,8 @@ from enum import Enum, IntEnum
 
 __all__ = (
     "ApiErrorCode",
+    "ChartKind",
+    "ChartTheme",
     "Effect",
     "ImageFormat",
     "Scope",
@@ -73,6 +75,16 @@ class Scope(str, Enum):
     ADMIN_READ = "admin:read"
     ADMIN_WRITE = "admin:write"
 
+    @property
+    def is_privileged(self) -> bool:
+        """Whether the server refuses to grant this scope to a personal key.
+
+        Privileged scopes exist so responses that *mention* scopes (error
+        bodies, ``GET /me`` ``key_scopes``) can always be interpreted — they do
+        not imply the endpoints behind them are callable through this client.
+        """
+        return self in (Scope.GUILD_IMAGES, Scope.ADMIN_READ, Scope.ADMIN_WRITE)
+
     def __str__(self) -> str:
         return self.value
 
@@ -100,6 +112,40 @@ class ImageFormat(str, Enum):
     GIF = "gif"
     BMP = "bmp"
     TIFF = "tiff"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class ChartKind(str, Enum):
+    """Chart forms accepted by :meth:`Client.render_chart`.
+
+    Pick by the data's job: :attr:`LINE`/:attr:`AREA` for change over time,
+    :attr:`BAR` for magnitude comparison, :attr:`SCATTER` for correlation,
+    :attr:`PIE`/:attr:`DONUT` for a part-to-whole split (single series,
+    at most 7 slices).
+    """
+
+    LINE = "line"
+    AREA = "area"
+    BAR = "bar"
+    SCATTER = "scatter"
+    PIE = "pie"
+    DONUT = "donut"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class ChartTheme(str, Enum):
+    """Color themes accepted by :meth:`Client.render_chart`.
+
+    ``DARK`` (the server default) matches the site; ``LIGHT`` uses a palette
+    stepped for a light surface. Both are colorblind-validated.
+    """
+
+    DARK = "dark"
+    LIGHT = "light"
 
     def __str__(self) -> str:
         return self.value

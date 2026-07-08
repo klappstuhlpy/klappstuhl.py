@@ -18,13 +18,19 @@ __all__ = (
     "DeleteResult",
     "ImageInfo",
     "ImageUpdate",
+    "Me",
+    "Palette",
+    "PaletteColor",
     "Paste",
     "RateLimit",
+    "ResourceUsage",
     "ScanReport",
     "ShareResult",
     "ShortLink",
     "Unfurl",
     "UploadResult",
+    "Usage",
+    "UsageSeries",
     "VersionInfo",
 )
 
@@ -251,6 +257,132 @@ class Unfurl:
             image=data.get("image"),
             site_name=data.get("site_name"),
             favicon=data.get("favicon"),
+        )
+
+
+@dataclass(frozen=True)
+class Me:
+    """The calling account (from :meth:`Client.me`)."""
+
+    id: int
+    name: str
+    admin: bool
+    totp_enabled: bool
+    discord_linked: bool
+    #: The scopes granted to the key making the request. Values match
+    #: :class:`~klappstuhl.Scope`; an empty list means a legacy full-access key.
+    #: Kept as plain strings so a scope added server-side never breaks parsing.
+    key_scopes: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> Me:
+        return cls(
+            id=int(data["id"]),
+            name=str(data["name"]),
+            admin=bool(data.get("admin", False)),
+            totp_enabled=bool(data.get("totp_enabled", False)),
+            discord_linked=bool(data.get("discord_linked", False)),
+            key_scopes=[str(s) for s in data.get("key_scopes", []) or []],
+        )
+
+
+@dataclass(frozen=True)
+class ResourceUsage:
+    """Totals for one resource kind (images, links, or pastes)."""
+
+    count: int
+    #: Total stored bytes (images only; ``0`` elsewhere).
+    bytes: int
+    #: Aggregate views (images/pastes) or clicks (links).
+    views: int
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ResourceUsage:
+        return cls(
+            count=int(data.get("count", 0)),
+            bytes=int(data.get("bytes", 0)),
+            views=int(data.get("views", 0)),
+        )
+
+
+@dataclass(frozen=True)
+class UsageSeries:
+    """A zero-filled per-day activity series, oldest first.
+
+    Shaped to feed straight into :meth:`Client.render_chart`: use ``days`` as
+    ``labels`` and ``uploads`` / ``upload_bytes`` as series data.
+    """
+
+    #: The day of each bucket (``YYYY-MM-DD``, UTC), oldest first.
+    days: list[str] = field(default_factory=list)
+    #: Images uploaded on each day.
+    uploads: list[int] = field(default_factory=list)
+    #: Bytes uploaded on each day.
+    upload_bytes: list[int] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> UsageSeries:
+        return cls(
+            days=[str(d) for d in data.get("days", []) or []],
+            uploads=[int(v) for v in data.get("uploads", []) or []],
+            upload_bytes=[int(v) for v in data.get("upload_bytes", []) or []],
+        )
+
+
+@dataclass(frozen=True)
+class Usage:
+    """The account's usage snapshot (from :meth:`Client.usage`)."""
+
+    images: ResourceUsage
+    links: ResourceUsage
+    pastes: ResourceUsage
+    series: UsageSeries
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> Usage:
+        return cls(
+            images=ResourceUsage.from_dict(data.get("images", {}) or {}),
+            links=ResourceUsage.from_dict(data.get("links", {}) or {}),
+            pastes=ResourceUsage.from_dict(data.get("pastes", {}) or {}),
+            series=UsageSeries.from_dict(data.get("series", {}) or {}),
+        )
+
+
+@dataclass(frozen=True)
+class PaletteColor:
+    """One extracted dominant color."""
+
+    #: ``#rrggbb`` hex string.
+    hex: str
+    #: The color as an ``(r, g, b)`` tuple.
+    rgb: tuple[int, int, int]
+    #: Share of sampled pixels this color covers (``0.0``–``1.0``).
+    proportion: float
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PaletteColor:
+        r, g, b = (int(c) for c in data.get("rgb", (0, 0, 0)))
+        return cls(
+            hex=str(data["hex"]),
+            rgb=(r, g, b),
+            proportion=float(data.get("proportion", 0.0)),
+        )
+
+
+@dataclass(frozen=True)
+class Palette:
+    """Dominant colors of an image (from :meth:`Client.color_palette`)."""
+
+    #: The colors, most dominant first.
+    colors: list[PaletteColor] = field(default_factory=list)
+    #: How many pixels were sampled (transparent pixels are skipped).
+    pixels_sampled: int = 0
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> Palette:
+        return cls(
+            colors=[PaletteColor.from_dict(c) for c in data.get("colors", []) or []],
+            pixels_sampled=int(data.get("pixels_sampled", 0)),
         )
 
 
