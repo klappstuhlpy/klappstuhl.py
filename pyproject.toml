@@ -41,7 +41,7 @@ dependencies = ["aiohttp>=3.9,<4"]
 
 [project.urls]
 Homepage = "https://github.com/klappstuhlpy/klappstuhl.py"
-Documentation = "https://github.com/klappstuhlpy/klappstuhl.py#readme"
+Documentation = "https://klappstuhlpy.readthedocs.io/en/stable/"
 Repository = "https://github.com/klappstuhlpy/klappstuhl.py"
 Issues = "https://github.com/klappstuhlpy/klappstuhl.py/issues"
 "API Reference" = "https://klappstuhl.me/api/docs"

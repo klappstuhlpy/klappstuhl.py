@@ -6,6 +6,7 @@ A fast, fully-typed **async** Python wrapper for the [klappstuhl.me](https://kla
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Typed](https://img.shields.io/badge/typed-py.typed-3776AB?logo=python&logoColor=white)](https://peps.python.org/pep-0561/)
+[![Docs](https://readthedocs.org/projects/klappstuhlpy/badge/?version=stable)](https://klappstuhlpy.readthedocs.io/en/stable/)
 [![API docs](https://img.shields.io/badge/API-Scalar%20reference-3178C6?logo=openapiinitiative&logoColor=white)](https://klappstuhl.me/api/docs)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
