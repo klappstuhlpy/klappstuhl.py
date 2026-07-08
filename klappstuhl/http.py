@@ -100,8 +100,18 @@ class HTTPClient:
         # Rebuilt on every attempt: an aiohttp payload can only be serialized
         # once, so a retry needs a fresh FormData.
         form = aiohttp.FormData(quote_fields=False)
+        # aiohttp only emits a multipart/form-data body once a part carries a
+        # filename or content type; a fields-only form would otherwise be sent
+        # as application/x-www-form-urlencoded. The API's upload endpoints (and
+        # the ``url`` alternative to a file, e.g. image manipulation/metadata)
+        # are multipart-only, so tag text fields with a content type to force
+        # multipart even when no file part is present.
+        force_multipart = bool(fields) and not files
         for name, value in (fields or {}).items():
-            form.add_field(name, value)
+            if force_multipart:
+                form.add_field(name, value, content_type="text/plain")
+            else:
+                form.add_field(name, value)
         for name, f in files or []:
             form.add_field(name, f.content, filename=f.filename, content_type=f.content_type)
         return form

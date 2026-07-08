@@ -59,7 +59,23 @@ async def test_metadata_with_url(client, server):
         "width": 10, "height": 20, "format": "png", "color": "Rgb8", "file_size": 100})
     info = await client.metadata(url="https://example.com/pic.png")
     assert info.width == 10 and info.height == 20
-    assert b"example.com" in server.last_request()["body"]  # url field in multipart
+    req = server.last_request()
+    assert b"example.com" in req["body"]  # url field in multipart
+    # A url-only source must still be sent as multipart/form-data (the endpoint
+    # is multipart-only); a fields-only form must not degrade to urlencoded.
+    assert req["headers"]["Content-Type"].startswith("multipart/form-data")
+
+
+async def test_url_source_uses_multipart(client, server):
+    # Regression: a fields-only form (the ``url`` alternative to a file) was
+    # being sent as application/x-www-form-urlencoded, which the multipart-only
+    # image endpoints reject with "Invalid boundary for multipart/form-data".
+    server.add("POST", "/api/v1/image/blur", body=b"PNGRESULT", content_type="image/png")
+    out = await client.blur(url="https://example.com/pic.png")
+    assert out == b"PNGRESULT"
+    ctype = server.last_request()["headers"]["Content-Type"]
+    assert ctype.startswith("multipart/form-data")
+    assert "boundary=" in ctype
 
 
 async def test_metadata_requires_exactly_one_source(client):

@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-07-08
+
+### Fixed
+- Requests that send only text form fields with no file part (the `url`
+  alternative to a file upload — `metadata`, `color_palette`, `manipulate`
+  and its effect wrappers, `convert`) were serialized as
+  `application/x-www-form-urlencoded`, which the multipart-only image
+  endpoints rejected with *"Invalid boundary for multipart/form-data
+  request"*. Such forms are now forced to `multipart/form-data`, so the
+  `url=` source works for every image endpoint.
+
 ## [0.4.1] - 2026-07-08
 
 ### Changed
