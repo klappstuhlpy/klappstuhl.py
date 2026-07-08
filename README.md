@@ -61,7 +61,7 @@ Or, declaring it as a project dependency:
 dependencies = ["klappstuhl.py @ git+https://github.com/klappstuhlpy/klappstuhl.py@v0.4.0"]
 
 # Poetry — [tool.poetry.dependencies]
-"klappstuhl.py" = { git = "https://github.com/klappstuhlpy/klappstuhl.py", tag = "v0.4.0" }
+klappstuhl-py = { git = "https://github.com/klappstuhlpy/klappstuhl.py", tag = "v0.4.0" }
 ```
 
 The distribution installs as **`klappstuhl.py`**, but you import it as **`klappstuhl`**
