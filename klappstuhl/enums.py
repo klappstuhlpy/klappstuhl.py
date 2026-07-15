@@ -13,6 +13,7 @@ __all__ = (
     "Scope",
     "TranscodeFormat",
     "UpdateState",
+    "Visibility",
 )
 
 
@@ -84,6 +85,22 @@ class Scope(str, Enum):
         not imply the endpoints behind them are callable through this client.
         """
         return self in (Scope.GUILD_IMAGES, Scope.ADMIN_READ, Scope.ADMIN_WRITE)
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class Visibility(str, Enum):
+    """Who can find a paste.
+
+    ``PUBLIC`` pastes are indexable and listed on your ``/user/<name>`` profile;
+    ``UNLISTED`` (the default) and ``PRIVATE`` are link-only. Accepted by
+    :meth:`Client.create_paste` and :meth:`Client.update_paste`.
+    """
+
+    PUBLIC = "public"
+    UNLISTED = "unlisted"
+    PRIVATE = "private"
 
     def __str__(self) -> str:
         return self.value

@@ -1,7 +1,27 @@
+import json
+
 import pytest
 
 import klappstuhl
 from klappstuhl.errors import Forbidden, NotFound, RateLimited
+
+
+def _paste_json(**overrides):
+    """A full ApiPaste response body; override individual fields per test."""
+    data = {
+        "id": "abc",
+        "url": "https://klappstuhl.me/p/abc",
+        "raw_url": "https://klappstuhl.me/p/abc.txt",
+        "content": "print('hi')",
+        "views": 0,
+        "created_at": "2026-07-15T00:00:00Z",
+        "visibility": "unlisted",
+        "burn_after_read": False,
+        "encrypted": False,
+        "size_bytes": 11,
+    }
+    data.update(overrides)
+    return data
 
 
 async def test_versions(client, server):
@@ -289,3 +309,81 @@ async def test_color_palette(client, server):
 async def test_color_palette_requires_one_source(client):
     with pytest.raises(ValueError):
         await client.color_palette()
+
+
+# -- pastes ------------------------------------------------------------------
+
+
+async def test_create_paste_sends_all_fields(client, server):
+    server.add("POST", "/api/v1/pastes", json=_paste_json(
+        title="Snippet", language="py", visibility="private",
+        burn_after_read=True, encrypted=True, content=None, edit_token="tok"))
+    paste = await client.create_paste(
+        "print('hi')",
+        title="Snippet",
+        language="py",
+        visibility=klappstuhl.Visibility.PRIVATE,
+        burn_after_read=True,
+        password="s3cret",
+        expires_in=3600,
+        confirm_secrets=True,
+    )
+    assert paste.visibility == "private"
+    assert paste.burn_after_read is True
+    assert paste.encrypted is True
+    assert paste.edit_token == "tok"
+
+    body = json.loads(server.last_request()["body"])
+    assert body == {
+        "content": "print('hi')",
+        "title": "Snippet",
+        "language": "py",
+        "visibility": "private",  # the enum is serialized to its value
+        "burn_after_read": True,
+        "password": "s3cret",
+        "expires_in": 3600,
+        "confirm_secrets": True,
+    }
+
+
+async def test_create_paste_omits_unset_fields(client, server):
+    server.add("POST", "/api/v1/pastes", json=_paste_json())
+    await client.create_paste("hello")
+    assert json.loads(server.last_request()["body"]) == {"content": "hello"}
+
+
+async def test_get_paste_with_password(client, server):
+    server.add("GET", "/api/v1/pastes/abc", json=_paste_json(encrypted=True))
+    await client.get_paste("abc", password="open-sesame")
+    assert server.last_request()["query"]["password"] == "open-sesame"
+
+
+async def test_update_paste_patches(client, server):
+    server.add("PATCH", "/api/v1/pastes/abc", json=_paste_json(content="new", title="T"))
+    paste = await client.update_paste("abc", "new", title="T", visibility="public")
+    assert paste.content == "new"
+    req = server.last_request()
+    assert req["path"] == "/api/v1/pastes/abc"
+    assert json.loads(req["body"]) == {"content": "new", "title": "T", "visibility": "public"}
+
+
+async def test_fork_paste_posts_with_password(client, server):
+    server.add("POST", "/api/v1/pastes/abc/fork", json=_paste_json(id="def", fork_of="abc"))
+    paste = await client.fork_paste("abc", password="pw")
+    assert paste.id == "def"
+    assert paste.fork_of == "abc"
+    req = server.last_request()
+    assert req["path"] == "/api/v1/pastes/abc/fork"
+    assert req["query"]["password"] == "pw"
+
+
+async def test_list_paste_revisions(client, server):
+    server.add("GET", "/api/v1/pastes/abc/revisions", json=[
+        {"id": 2, "content": "v2", "created_at": "2026-07-15T01:00:00Z", "language": "py"},
+        {"id": 1, "content": "v1", "created_at": "2026-07-15T00:00:00Z"},
+    ])
+    revs = await client.list_paste_revisions("abc")
+    assert [r.id for r in revs] == [2, 1]
+    assert revs[0].content == "v2"
+    assert revs[0].language == "py"
+    assert revs[1].language is None

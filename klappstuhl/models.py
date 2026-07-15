@@ -22,6 +22,7 @@ __all__ = (
     "Palette",
     "PaletteColor",
     "Paste",
+    "PasteRevision",
     "RateLimit",
     "ResourceUsage",
     "ScanReport",
@@ -217,11 +218,34 @@ class Paste:
     id: str
     url: str
     raw_url: str
+    #: The paste body. Empty for a password-encrypted paste fetched without its
+    #: password, and for a burn-after-read paste (reading one is an explicit,
+    #: destructive act the API never performs on your behalf).
     content: str
     views: int
     created_at: str
     language: str | None = None
     expires_at: str | None = None
+    #: Optional title.
+    title: str | None = None
+    #: ``public``, ``unlisted`` (the default) or ``private``. Kept as a plain
+    #: string — compare against :class:`~klappstuhl.Visibility` — so a value
+    #: added server-side never breaks parsing.
+    visibility: str = "unlisted"
+    #: Whether the paste is destroyed the first time it is explicitly revealed.
+    burn_after_read: bool = False
+    #: Whether the body is password-encrypted at rest.
+    encrypted: bool = False
+    #: Size of the stored body, in bytes.
+    size_bytes: int = 0
+    #: The paste this one was forked from, if any.
+    fork_of: str | None = None
+    #: Last-edit timestamp (RFC 3339), if it has ever been edited.
+    updated_at: str | None = None
+    #: The one-time edit token for an anonymous paste — present **only** on the
+    #: response that created it. Account-owned pastes (everything a personal API
+    #: key makes) never carry one.
+    edit_token: str | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Paste:
@@ -234,6 +258,43 @@ class Paste:
             created_at=str(data.get("created_at", "")),
             language=data.get("language"),
             expires_at=data.get("expires_at"),
+            title=data.get("title"),
+            visibility=str(data.get("visibility", "unlisted")),
+            burn_after_read=bool(data.get("burn_after_read", False)),
+            encrypted=bool(data.get("encrypted", False)),
+            size_bytes=int(data.get("size_bytes", 0)),
+            fork_of=data.get("fork_of"),
+            updated_at=data.get("updated_at"),
+            edit_token=data.get("edit_token"),
+        )
+
+
+@dataclass(frozen=True)
+class PasteRevision:
+    """A superseded version of a paste's body.
+
+    Returned by :meth:`Client.list_paste_revisions`, newest first and capped at
+    the last 20 — older ones are pruned server-side.
+    """
+
+    id: int
+    #: The body as it was at this revision.
+    content: str
+    #: When this version was superseded (RFC 3339).
+    created_at: str
+    #: The title as it was, if any.
+    title: str | None = None
+    #: The language as it was, if any.
+    language: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PasteRevision:
+        return cls(
+            id=int(data["id"]),
+            content=str(data.get("content", "")),
+            created_at=str(data.get("created_at", "")),
+            title=data.get("title"),
+            language=data.get("language"),
         )
 
 

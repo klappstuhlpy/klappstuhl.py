@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-15
+
+### Added
+- Full coverage of the pastebin API. `create_paste` gained `title`,
+  `visibility`, `burn_after_read`, `password` and `confirm_secrets`; `get_paste`
+  gained `password` (to decrypt a protected paste).
+- `Client.update_paste` (edit, snapshotting the old body into history),
+  `Client.fork_paste` (copy any paste into a new one you own) and
+  `Client.list_paste_revisions`.
+- `Visibility` enum (`public` / `unlisted` / `private`) and the `PasteRevision`
+  model.
+
+### Changed
+- `Paste` now exposes `title`, `visibility`, `burn_after_read`, `encrypted`,
+  `size_bytes`, `fork_of`, `updated_at` and `edit_token`. Existing fields are
+  unchanged, so current code keeps working.
+
 ## [0.4.2] - 2026-07-08
 
 ### Fixed
@@ -106,6 +123,7 @@ Initial release.
 - Flexible file inputs (path, bytes, stream, or `File`) and `share=True` support.
 - `py.typed` marker for downstream type-checking.
 
+[0.5.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.5.0
 [0.4.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.4.0
 [0.3.1]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.3.1
 [0.3.0]: https://github.com/klappstuhlpy/klappstuhl.py/releases/tag/v0.3.0

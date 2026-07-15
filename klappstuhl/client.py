@@ -18,7 +18,7 @@ from typing import Any, Literal, Union, cast, overload
 
 import aiohttp
 
-from .enums import ChartKind, ChartTheme, Effect, ImageFormat, TranscodeFormat
+from .enums import ChartKind, ChartTheme, Effect, ImageFormat, TranscodeFormat, Visibility
 from .file import File, FileInput, resolve_file
 from .http import DEFAULT_BASE_URL, HTTPClient
 from .models import (
@@ -28,6 +28,7 @@ from .models import (
     Me,
     Palette,
     Paste,
+    PasteRevision,
     RateLimit,
     ScanReport,
     ShareResult,
@@ -270,8 +271,13 @@ class Client:
         self,
         content: str,
         *,
+        title: str | None = None,
         language: str | None = None,
+        visibility: Visibility | str | None = None,
+        burn_after_read: bool = False,
+        password: str | None = None,
         expires_in: int | None = None,
+        confirm_secrets: bool = False,
     ) -> Paste:
         """Create a hosted paste. Requires the ``pastes:write`` scope.
 
@@ -279,18 +285,41 @@ class Client:
         ----------
         content:
             The paste body (≤512 KB).
+        title:
+            Optional title, shown on the ``/p/<id>`` view.
         language:
             Optional syntect language token / extension (``rust``, ``py`` …) used
-            to pick a highlighter for the ``/p/<id>`` view.
+            to pick a highlighter. Omit for server-side auto-detection.
+        visibility:
+            :class:`~klappstuhl.Visibility` (or the equivalent string):
+            ``public``, ``unlisted`` (the default) or ``private``.
+        burn_after_read:
+            Destroy the paste the first time it is explicitly revealed.
+        password:
+            Encrypt the body with this password (Argon2id + ChaCha20-Poly1305).
+            It is never stored — lose it and the paste is unreadable.
         expires_in:
             Optional time-to-live in seconds (capped at 365 days). Omit for a
             permanent paste.
+        confirm_secrets:
+            Publish even though the body trips the secret scanner (otherwise a
+            detected credential is rejected with ``400``).
         """
         body: dict[str, Any] = {"content": content}
+        if title is not None:
+            body["title"] = title
         if language is not None:
             body["language"] = language
+        if visibility is not None:
+            body["visibility"] = str(visibility)
+        if burn_after_read:
+            body["burn_after_read"] = True
+        if password is not None:
+            body["password"] = password
         if expires_in is not None:
             body["expires_in"] = expires_in
+        if confirm_secrets:
+            body["confirm_secrets"] = True
         data = await self._http.request("POST", "/pastes", json_body=body)
         return Paste.from_dict(data)
 
@@ -310,10 +339,72 @@ class Client:
         data = await self._http.request("GET", "/pastes", params=params)
         return [Paste.from_dict(x) for x in data or []]
 
-    async def get_paste(self, paste_id: str) -> Paste:
-        """Fetch one of your pastes by id. Requires ``pastes:read``."""
-        data = await self._http.request("GET", f"/pastes/{paste_id}")
+    async def get_paste(self, paste_id: str, *, password: str | None = None) -> Paste:
+        """Fetch one of your pastes by id. Requires ``pastes:read``.
+
+        Pass ``password`` to decrypt a password-protected paste; without it the
+        returned :attr:`Paste.content` is empty. The body of a burn-after-read
+        paste is never returned here — reveal it in a browser.
+        """
+        params = {"password": password} if password is not None else None
+        data = await self._http.request("GET", f"/pastes/{paste_id}", params=params)
         return Paste.from_dict(data)
+
+    async def update_paste(
+        self,
+        paste_id: str,
+        content: str,
+        *,
+        title: str | None = None,
+        language: str | None = None,
+        visibility: Visibility | str | None = None,
+        expires_in: int | None = None,
+        password: str | None = None,
+        confirm_secrets: bool = False,
+    ) -> Paste:
+        """Edit one of your pastes. Requires ``pastes:write``.
+
+        The previous body is snapshotted into the paste's revision history. Only
+        the fields you pass change; ``expires_in`` is the exception — omit it and
+        the paste becomes permanent. ``password`` is **required** when the paste
+        is encrypted (the new body is re-sealed under the same password).
+        """
+        body: dict[str, Any] = {"content": content}
+        if title is not None:
+            body["title"] = title
+        if language is not None:
+            body["language"] = language
+        if visibility is not None:
+            body["visibility"] = str(visibility)
+        if expires_in is not None:
+            body["expires_in"] = expires_in
+        if password is not None:
+            body["password"] = password
+        if confirm_secrets:
+            body["confirm_secrets"] = True
+        data = await self._http.request("PATCH", f"/pastes/{paste_id}", json_body=body)
+        return Paste.from_dict(data)
+
+    async def fork_paste(self, paste_id: str, *, password: str | None = None) -> Paste:
+        """Copy any paste into a fresh one you own. Requires ``pastes:write``.
+
+        Not limited to your own pastes. The fork is independent and inherits
+        neither the source's password nor its burn flag. Pass ``password`` to
+        fork an encrypted source; a burn-after-read source cannot be forked (that
+        would be a read dodging the burn).
+        """
+        params = {"password": password} if password is not None else None
+        data = await self._http.request("POST", f"/pastes/{paste_id}/fork", params=params)
+        return Paste.from_dict(data)
+
+    async def list_paste_revisions(self, paste_id: str) -> list[PasteRevision]:
+        """List a paste's superseded versions, newest first. Requires ``pastes:read``.
+
+        Capped at the last 20 revisions. An encrypted paste's history is not
+        readable and raises :class:`~klappstuhl.errors.NotFound`.
+        """
+        data = await self._http.request("GET", f"/pastes/{paste_id}/revisions")
+        return [PasteRevision.from_dict(x) for x in data or []]
 
     async def delete_paste(self, paste_id: str) -> Paste:
         """Delete one of your pastes by id. Requires ``pastes:write``.

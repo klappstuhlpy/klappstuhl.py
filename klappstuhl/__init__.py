@@ -43,6 +43,7 @@ from .enums import (
     Scope,
     TranscodeFormat,
     UpdateState,
+    Visibility,
 )
 from .errors import (
     BadRequest,
@@ -66,6 +67,7 @@ from .models import (
     Palette,
     PaletteColor,
     Paste,
+    PasteRevision,
     RateLimit,
     ResourceUsage,
     ScanReport,
@@ -104,6 +106,7 @@ __all__ = (
     "Palette",
     "PaletteColor",
     "Paste",
+    "PasteRevision",
     # models
     "RateLimit",
     "RateLimited",
@@ -122,5 +125,6 @@ __all__ = (
     "Usage",
     "UsageSeries",
     "VersionInfo",
+    "Visibility",
     "__version__",
 )
